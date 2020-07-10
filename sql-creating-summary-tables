@@ -1,0 +1,138 @@
+/*create a macro called yield and within the brackets 2 date macros*/;
+
+%macro yield(fyqtr,tabledt);
+
+/* Create a blank summary table to input data */
+
+proc sql; 
+	create table work.YIELD_BAND_&fyqtr.
+	( 
+	  YIELD_APR_BAND char(20),
+	  &fyqtr. num 8 format percent7.2
+  );
+quit;
+
+/* Next do your data work > in this request we are calculating the yield percentage which is the actual funds being retrieved by a loan */
+/*                        > then a CASE statement to do grouping by Yield % Band                                                        */
+/*                        > NOTE : PRINOS is Principal Balance Outstanding                                                              */
+/*                                 aprxamt is used in the yield calculation                                                             */
+/*                        > The yield here is being calculated on the Good Book so no Bad Debt accounts                                 */
+
+PROC SQL;
+   CREATE TABLE WORK.YIELD_&fyqtr. AS 
+   SELECT ddl.VALID_FROM, 
+          ddl.VALID_TO, 
+          ddl.ACCOUNT_NUMBER, 
+          ddl.ACCOUNT_STATUS_CODE, 
+          ddl.BAL_PRIN_AMT,
+		  fdl.INTEREST_DUE,
+		  (ddl.BAL_PRIN_AMT + fdl.INTEREST_DUE) AS PRINOS,
+          dda.apr as DDA_APR,
+		  coalesce(dda.apr,rbs.apr) as APR,
+		  calculated prinos * coalesce(dda.apr,rbs.apr) as aprxamt,
+		  (((1+((calculated aprxamt/calculated prinos)/100))**(1/12)-1)*12) format percent7.2 as calc_yield,
+		   case when calculated calc_yield = 0.00 then '0. 0% APR          '
+		   		when calculated calc_yield between 0.00 and 0.05 then '1. 0% to 5%'
+		   		when calculated calc_yield between 0.05 and 0.075 then '2. 5% to 7.5%'
+				when calculated calc_yield between 0.075 and 0.10 then '3. 7.5% to 10%'
+		        when calculated calc_yield between 0.10 and 0.125 then '4. 10% to 12.5%'
+		        when calculated calc_yield between 0.125 and 0.15 then '5. 12.5% to 15%'
+		        when calculated calc_yield between 0.15 and 0.225 then '6. 15% to 22.5%'
+		        when calculated calc_yield between 0.225 and 0.30 then '7. 22.5% to 30%'
+		        when calculated calc_yield > 0.30 then '8. more than 30%'
+				else '9. missing legacy'
+			end as YIELD_APR_BAND,
+		   bad.coff_flag,
+		   bad.baddebtflag
+      FROM DSPLNACT.DIM_DAILY_LOANS_&tabledt. (WHERE=(ACCOUNT_STATUS_CODE ne "C")) as ddl
+      LEFT JOIN DSPLNACT.FACT_DAILY_LOANS_&tabledt. as fdl
+		ON ddl.ACCOUNT_NUMBER = fdl.ACCOUNT_NUMBER
+	  LEFT JOIN DSPLNAPP.DIM_DAILY_APPS_&tabledt. (WHERE=(CURRENT_FLAG = 'Y')) as dda
+		ON SUBSTR(ddl.ACCOUNT_NUMBER,3,10) = dda.AC_NUM
+	  LEFT JOIN DSPLNREP.BAD_DEBT_MONTHLY_ACCOUNT_&tabledt. (WHERE=(coff_flag = 0)) as bad 
+		ON ddl.ACCOUNT_NUMBER = bad.ACCOUNT_NUMBER
+	  LEFT JOIN BA2.radb_sc_loan(where=(radb_sc_loan_new_acct like '%')) as rbsxref
+    	ON input(ddl.account_number,20.) = input(rbsxref.radb_sc_loan_new_acct,20.)
+  	  LEFT JOIN rbs_data(where=(mod(account,1)=0)) as rbs
+    	ON input(radb_sc_loan.radb_sc_loan_old_acct,20.) = rbs.account
+	  
+	 	WHERE bad.baddebtflag = 0
+     ;
+QUIT;
+
+/* This next part gets the total Balance exluding interest */
+
+proc sql;
+	create table el_yield_test as
+	 	select "&fyqtr." as FY_QTR,
+			   sum(PRINOS) as Total_Balance_ExInt
+	    from WORK.YIELD_&fyqtr.;
+quit;
+
+/* This total Balance exluding interest grouped by Yield apr band */
+
+proc sql;
+	create table el_yield_test2 as
+	 	select "&fyqtr." as FY_QTR,
+			   YIELD_APR_BAND,
+			   sum(PRINOS) as Balance_ExInt_Yield,
+			   count(distinct(ACCOUNT_NUMBER)) AS ACCOUNT_VOLUME
+	    from WORK.YIELD_&fyqtr.
+		group by 1,2;
+quit;
+
+/* Then join these back together */
+
+proc sql;
+	create table yield_fin_&fyqtr. as 
+		select t1. *,
+			   t2. Total_Balance_ExInt,
+			   (Balance_ExInt_Yield / Total_Balance_ExInt) format percent7.2 as &fyqtr.
+	from el_yield_test2 t1
+	left join el_yield_test t2 on t1.FY_QTR = t2.FY_QTR
+	order by 2;
+quit;
+
+
+/* Insert your data into the Summary table */
+
+proc sql;
+  	insert into work.YIELD_BAND_&fyqtr.
+	select  YIELD_APR_BAND,
+			&fyqtr.
+	from work.yield_fin_&fyqtr.
+	;
+quit;
+
+%MEND;
+
+/* Complete for other Financial Year Quarters */
+
+%yield(Q4_2019_2020,202002)
+%yield(Q3_2019_2020,201911)
+%yield(Q2_2019_2020,201908)
+%yield(Q1_2019_2020,201905)
+%yield(Q4_2018_2019,201902)
+/*%yield(Q3_2018_2019,201811)*/
+;
+
+/* NOTE - This table is good for showing number of Accounts per Band per Qtr 
+		yield_fin_&fyqtr.   */
+
+
+PROC SQL;
+	create table YIELD_YR_BY_QTR2 AS
+	select q1. *,
+		   q2. Q3_2019_2020,
+		   q3. Q2_2019_2020,
+		   q4. Q1_2019_2020,
+		   q5. Q4_2018_2019
+/*		   q6. Q3_2018_2019*/
+	from work.YIELD_BAND_Q4_2019_2020 q1
+	left join work.YIELD_BAND_Q3_2019_2020 q2 on q1.YIELD_APR_BAND = q2.YIELD_APR_BAND 
+	left join work.YIELD_BAND_Q2_2019_2020 q3 on q1.YIELD_APR_BAND = q3.YIELD_APR_BAND
+	left join work.YIELD_BAND_Q1_2019_2020 q4 on q1.YIELD_APR_BAND = q4.YIELD_APR_BAND
+	left join work.YIELD_BAND_Q4_2018_2019 q5 on q1.YIELD_APR_BAND = q5.YIELD_APR_BAND
+;
+
+quit;
