@@ -44,14 +44,14 @@ PROC SQL;
 			end as YIELD_APR_BAND,
 		   bad.coff_flag,
 		   bad.baddebtflag
-      FROM DSPLNACT.DIM_DAILY_LOANS_&tabledt. (WHERE=(ACCOUNT_STATUS_CODE ne "C")) as ddl
-      LEFT JOIN DSPLNACT.FACT_DAILY_LOANS_&tabledt. as fdl
+      FROM ddl_&tabledt. (WHERE=(ACCOUNT_STATUS_CODE ne "C")) as ddl
+      LEFT JOIN fdl_&tabledt. as fdl
 		ON ddl.ACCOUNT_NUMBER = fdl.ACCOUNT_NUMBER
-	  LEFT JOIN DSPLNAPP.DIM_DAILY_APPS_&tabledt. (WHERE=(CURRENT_FLAG = 'Y')) as dda
+	  LEFT JOIN dda_&tabledt. (WHERE=(CURRENT_FLAG = 'Y')) as dda
 		ON SUBSTR(ddl.ACCOUNT_NUMBER,3,10) = dda.AC_NUM
-	  LEFT JOIN DSPLNREP.BAD_DEBT_MONTHLY_ACCOUNT_&tabledt. (WHERE=(coff_flag = 0)) as bad 
+	  LEFT JOIN bdma_&tabledt. (WHERE=(coff_flag = 0)) as bad 
 		ON ddl.ACCOUNT_NUMBER = bad.ACCOUNT_NUMBER
-	  LEFT JOIN BA2.radb_sc_loan(where=(radb_sc_loan_new_acct like '%')) as rbsxref
+	  LEFT JOIN BA2.rbsref(where=(radb_sc_loan_new_acct like '%')) as rbsxref
     	ON input(ddl.account_number,20.) = input(rbsxref.radb_sc_loan_new_acct,20.)
   	  LEFT JOIN rbs_data(where=(mod(account,1)=0)) as rbs
     	ON input(radb_sc_loan.radb_sc_loan_old_acct,20.) = rbs.account
