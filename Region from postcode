@@ -1,0 +1,162 @@
+
+
+
+data gregion;
+set BA_DATA;
+if substr(postAL_code,2,1) in ('1','2','3','4','5','6','7','8','9','0')   
+ then pcode=substr(postAL_code,1,1);                                      
+ else pcode=substr(postAL_code,1,2);                                      
+gregion=put(pcode,$greg.); 
+run;
+
+data el_final;
+	set mergethem2 ;
+	if substr(postal_code,2,1) in ('1','2','3','4','5','6','7','8','9','0')   
+ 	   then pcode=substr(postal_code,1,1);                                      
+ 	   else pcode=substr(postal_code,1,2);
+run ;
+
+
+proc sql;
+create table el_capo
+as 
+select distinct put(pcode,$greg.) as region,
+	   			count(pcode) as Customer_Volume
+		
+from el_final
+
+group by 1 
+order by 2 desc;;
+
+quit;
+
+
+
+proc format;                                                                 
+value $greg            /* Geographical Region */                     
+     	'KW' = 'Scotland'
+		'IV' = 'Scotland'
+		'AB' = 'Scotland'
+		'PH' = 'Scotland'
+		'DD' = 'Scotland'
+		'PA' = 'Scotland'
+		'FK' = 'Scotland'
+		'KY' = 'Scotland'
+		'G'	 = 'Scotland'
+		'EH' = 'Scotland'
+		'KA' = 'Scotland'
+		'ML' = 'Scotland'
+		'DG' = 'Scotland'
+		'TD' = 'Scotland'
+		'HS' = 'Scotland'
+		'ZE' = 'Scotland'
+		'BT' = 'Northern Ireland'
+		'CA' = 'North West'
+		'LA' = 'North West'
+		'BD' = 'North West'
+		'BB' = 'North West'
+		'PR' = 'North West'
+		'L'  = 'North West'
+		'WA' = 'North West'
+		'CH' = 'North West'
+		'CW' = 'North West'
+		'SK' = 'North West'
+		'M'  = 'North West'
+		'WN' = 'North West'
+		'BL' = 'North West'
+		'OL' = 'North West'
+		'FY' = 'North West'
+		'HX' = 'North West'
+		'HD' = 'North West'
+		'NE' = 'North East'
+		'DH' = 'North East'
+		'SR' = 'North East'
+ 		'TS' = 'North East'
+		'WF' = 'North East'
+		'DL' = 'North East'
+		'HG' = 'North East'
+		'LS' = 'North East'
+		'YO' = 'North East'
+		'HU' = 'North East'
+		'LL' = 'Wales'
+		'SY' = 'Wales'
+		'SA' = 'Wales'
+		'LD' = 'Wales'
+		'CF' = 'Wales'
+		'NP' = 'Wales'
+		'WV' = 'West Midlands'
+		'DY' = 'West Midlands'
+		'TF' = 'West Midlands'
+		'ST' = 'West Midlands'
+		'HR' = 'West Midlands'
+		'WR' = 'West Midlands'
+		'B'  = 'West Midlands'
+		'CV' = 'West Midlands'
+		'NN' = 'West Midlands'
+		'WS' = 'West Midlands'
+		'S'  = 'East Midlands'
+		'DN' = 'East Midlands'
+		'LN' = 'East Midlands'
+		'NG' = 'East Midlands'
+		'DE' = 'East Midlands'
+		'LE' = 'East Midlands'
+		'PE' = 'East Midlands'
+		'CB' = 'East Midlands'
+		'IP' = 'East Midlands'
+		'NR' = 'East Midlands'
+		'CO' = 'East Midlands'
+		'GL' = 'South West'
+		'BS' = 'South West'
+		'SN' = 'South West'
+		'BA' = 'South West'
+		'SP' = 'South West'
+		'BH' = 'South West'
+		'DT' = 'South West'
+		'TA' = 'South West'
+		'EX' = 'South West'
+		'TQ' = 'South West'
+		'PL' = 'South West'
+		'TR' = 'South West'
+		'MK' = 'South East'
+		'SG' = 'South East'
+		'HP' = 'South East'
+		'OX' = 'South East'
+		'RG' = 'South East'
+		'GU' = 'South East'	
+		'SO' = 'South East'
+		'RH' = 'South East'
+		'TN' = 'South East'
+		'BN' = 'South East'
+		'CT' = 'South East'
+		'ME' = 'South East'
+		'CM' = 'South East'
+		'LU' = 'South East'
+		'AL' = 'South East'
+		'SS' = 'South East'
+		'SL' = 'South East'
+		'PO' = 'South East'
+		'WD' = 'Greater London'
+		'UB' = 'Greater London'
+		'TW' = 'Greater London'
+		'KT' = 'Greater London'
+		'HA' = 'Greater London'
+		'W'  = 'Greater London'
+		'NW' = 'Greater London'
+		'WC' = 'Greater London'
+		'SW' = 'Greater London'
+		'SM' = 'Greater London'
+		'CR' = 'Greater London'
+		'BR' = 'Greater London'
+		'SE' = 'Greater London'
+		'EC' = 'Greater London'
+		'E'  = 'Greater London'
+		'N'  = 'Greater London'
+		'DA' = 'Greater London'
+		'RM' = 'Greater London'
+		'IG' = 'Greater London'
+		'EN' = 'Greater London'
+		'GY' = 'Channel Islands'
+		'JE' = 'Channel Islands'
+		'IM' = 'Isle of Man'
+		other = 'Unknown';  
+run;
