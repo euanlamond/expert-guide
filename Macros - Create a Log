@@ -1,0 +1,33 @@
+Macro at the start of FISERV batch
+
+/* LI added in compress option: 31/10/2014 */
+options compress=yes;
+
+%let date=%sysfunc(date(),yymmddn8.);
+%put &date;
+
+data _null_;
+  logname = compress('FinMI_Fiserv_'||put(today(), yymmddn8.));
+  call symput("todayslog", logname);
+  put _all_;
+run;
+
+proc printto log="/sas/bau/businessanalysis/SASLogs/FinMI_Fiserv_&date..log";
+run;
+
+%put NOTE: BA Job Log: MACRO SETUP Job started on %sysfunc(date(),date9.), %sysfunc(time(),time.); 
+
+Macro at the start of DIM DAILY LOANS
+
+
+proc printto log="/sas/bau/businessanalysis/SASLogs/FinMI_Fiserv_&date..log";
+run;
+
+%put NOTE: BA Job Log : DIM DAILY LOANS Job started on %sysfunc(date(),date9.), %sysfunc(time(),time.); 
+
+
+/*Clear work library*/
+%clearwork;
+/* Abort the job if previous errors found */
+%Errorcheck;
+
