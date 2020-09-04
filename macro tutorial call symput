@@ -1,0 +1,120 @@
+1.1   Intro - Basic Concepts
+
+/*Libname ba2 "/sas/bau/businessanalysis2" compress=yes;*/                                       -    Libname compressed not used  ???
+
+Libname ba2 "/sas/bau/businessanalysis2";                                                                         -    assigns ba2 to the filepath in " "
+
+%let ba2=ba2;                                                                                                                              -    applies macro
+
+proc sql;
+      create table &ba2..staging_daily_loans_&table_date as                                              -    ba2 macro in use, means macro can be changed in macro program and changes every time it is used
+
+
+proc copy in=&ba2. out=work;
+     select dim_daily_loans_backup;
+run;                                                                                                                                                -    Copies from dateset from ba2 to work
+
+%put &fyearstart &fyearend;                                                                                                   -    writes variable to log 
+
+
+  1.2   Conditional Logic
+
+With macros and macro variables, you have a lot of flexibility. You can increase that flexibility still more by using conditional macro statements such as %IF. 
+
+%IF  condition  %THEN  action;
+ %ELSE %IF condition %THEN action;
+ %ELSE action;
+%IF condition %THEN %DO;
+ action;
+%END;
+
+e.g.   
+ 
+data blank_data;
+  format date date9.;
+  do date = &fyearstart to &fyearend;
+	applications = 0;
+	sales = 0;
+	lending = 0;
+	wapr = 0;
+	type = "Blank";
+	output;
+  end;
+run;
+
+/*checks if dataset exists, populates with blank data if not*/
+%macro checkds(dsn,num);
+  %if %sysfunc(exist(&dsn)) %then %do;
+    data budget_&num;
+	set &dsn;
+    run;
+  %end;
+  %else %do;
+    data budget_&num;
+	set blank_data;
+    run;
+  %end;
+%mend checkds;
+
+/*change name of budgets when needed*/
+%checkds(bislsand.ln050d_budget_v2,one)
+%checkds(bislsand.ln050d_reforecast,two)
+%checkds(bislsand.ln050d_budget_v1,three)
+%checkds(bislsand.ln050d_RF_DEC,four)
+  
+
+
+  1.3   Automatic Macro Variables
+
+&SYSDATE        -          31OCT03 Character value of the date that job or session began
+&SYSDAY          -          Friday Day of the week that job or session began
+
+e.g.
+data fyear1;
+ format fyearstart fyearend date9.;
+ if &month in ("1","2") then fyearstart="01mar&prevyr"d ;
+ else fyearstart="01mar&curryr"d;
+
+ if &month in ("1","2") then fyearend="01mar&curryr"d - 1;/*should keep 29th in leap year*/
+ else fyearend="01mar&nextyr"d -1;/*should keep 29th in leap year*/
+
+ call symput("fyearstart",fyearstart);
+ call symput("fyearend",fyearend);
+
+run;
+
+
+
+
+
+  2.1   CALL SYMPUT - Data Driven Programs
+
+ CALL SYMPUT takes a value from a DATA step and assigns it to a macro variable which you can then use later in your program.
+
+data _null_;
+  logname = compress('FinMI_Fiserv_'||put(today(), yymmddn8.));
+  call symput("todayslog", logname);
+  put _all_;                                                                                                                                    -  Log name example
+run;
+
+e.g.   %logcheck(/sas/bau/businessanalysis/SASLogs/&todayslog );                                -  used in DIM DAILY LOANS
+
+data _null_;
+    call symput("table_date",    put(today(), date9.));                                                           -  Table date example
+run;      
+
+e.g.  proc sql;
+      create table &ba2..staging_daily_loans_&table_date as                                             -  used in DIM DAILY LOANS
+                                                                                                           
+
+data _null_;
+call symput('reporting_date',intnx('day',today(),-0));
+call symput('Usedate',intnx('day',today(),-1));
+call symput('extract_date',intnx('day',today(),-1));                                                              -  Different Report date uses
+run;
+
+data _null_;
+    today=today();
+    first_of_month = (day(today) = 1);
+    call symput("firstofmonth", first_of_month);                                                                    -  First of Month
+run;
