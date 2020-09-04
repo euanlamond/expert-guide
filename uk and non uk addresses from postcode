@@ -1,0 +1,9 @@
+/*Checks postcode field for valid UK postcode format and removes from extract*/
+
+data work.overseas_customers_a work.uk_postcodes;
+    set work.overseas_customers;
+    regexpression = prxparse('/[A-Za-z][A-Ha-hJ-Yj-y]?[0-9][A-Za-z0-9]?\s?[0-9][A-Za-z]{2}|[Gg][Ii][Rr] 0[Aa]{2}/');
+    if prxmatch(regexpression, postal_code) then output work.uk_postcodes;
+    else output work.overseas_customers_a;
+    drop regexpression;
+run;
