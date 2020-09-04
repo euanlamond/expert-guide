@@ -1,0 +1,12 @@
+proc sql;
+	create table Summary as
+	select OPENING_MONTH_DATE format monyy. as OPEN_MONTH,
+		   OPEN_VOLUME format comma9. as ACCOUNT_OPEN_VOLUME, 
+		   DRAWDOWN format NLMNLGBP. as MONTH_DRAWDOWN
+	from (select INTNX('MONTH',DATE_OPEN,0,'b') format date9. as OPENING_MONTH_DATE,
+		   count(distinct ACCOUNT_NUMBER) AS OPEN_VOLUME,
+		   SUM(LOAN_AMT) AS DRAWDOWN
+		   from ACCOUNT_LEVEL8
+		   group by 1)
+	where OPENING_MONTH_DATE = &dStrt2.;
+quit;
