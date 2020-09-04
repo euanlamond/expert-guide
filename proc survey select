@@ -1,0 +1,6 @@
+proc surveyselect data=WORK.EL_JOIN
+	method=srs 
+	n=10 
+	out=Sample
+	Seed=1 ;
+run;
