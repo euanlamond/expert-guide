@@ -1,0 +1,4 @@
+DATA EL_TEST;
+	LENGTH DATE $9.;
+	DATE = put(21488,date9.);
+RUN;
